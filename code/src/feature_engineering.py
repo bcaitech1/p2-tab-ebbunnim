@@ -390,8 +390,8 @@ def feature_engineering_all(data, year_month):
     print('#########complete labeling###########')
 
     # group by aggregation 함수 선언
-    agg_func = ['mean','max','min','sum','count','std','skew']
-    # agg_func = ['sum','count']
+    # agg_func = ['mean','max','min','sum','count','std','skew']
+    agg_func = ['mean','sum','count','skew']
 
     agg_dict = {
         'order_ts':['first','last'],
@@ -400,7 +400,7 @@ def feature_engineering_all(data, year_month):
         'price_diff':agg_func,
         'total_diff':agg_func,
         'cumsum_total_by_cust_id':agg_func,
-        # 'cumsum_quantity_by_cust_id':agg_func,
+        'cumsum_quantity_by_cust_id':agg_func, ### corr에 의해 drop해봤으나 안한게 낫다.
         'cumsum_price_by_cust_id':agg_func,
         'cumsum_total_by_prod_id':agg_func,
         'cumsum_quantity_by_prod_id':agg_func,
@@ -408,8 +408,8 @@ def feature_engineering_all(data, year_month):
         'cumsum_total_by_order_id':agg_func,
         'cumsum_quantity_by_order_id':agg_func,
         'cumsum_price_by_order_id':agg_func,
+        'mean':agg_func,
     }
-
     
     all_train_data = pd.DataFrame()
     
@@ -433,7 +433,7 @@ def feature_engineering_all(data, year_month):
     
     all_train_data = train_label.merge(all_train_data, on=['customer_id', 'year_month'], how='left')
     features = all_train_data.drop(columns=['customer_id', 'label', 'year_month']).columns
-    
+    print('features: ',features)
     # group by aggretation 함수로 test 데이터 피처 생성
     test=feature_generation_all(test,year_month)
     test_agg = test.groupby(['customer_id']).agg(agg_dict)
@@ -446,3 +446,4 @@ def feature_engineering_all(data, year_month):
     
     print('x_tr.shape', x_tr.shape, ', x_te.shape', x_te.shape)
     return x_tr, x_te, all_train_data['label'], features
+
