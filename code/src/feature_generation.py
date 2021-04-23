@@ -5,6 +5,7 @@ warnings.filterwarnings('ignore')
 import os, sys, gc, warnings, random
 import datetime
 from dateutil.relativedelta import relativedelta
+import dateutil.relativedelta
 
 # Data manipulation
 import pandas as pd 
@@ -96,9 +97,6 @@ def feature_generation_all(data,year_month):
     # feture 붙이기
     all_mean_col=all_mean_category(data,year_month)
     df=pd.merge(df,all_mean_col,on='customer_id',how='left')
-    print(df.head())
-
-
     print('#########complete generation###########')
 
     ##### corr col 제거 #####
@@ -122,8 +120,7 @@ def all_mean_category(df,year_month):
     first_buy['mean'] = data_agg_sum['total']/(first_buy['month']+1)
     return first_buy[['customer_id','mean']]
 
-
-    def add_trend(train, test, year_month):
+def add_trend(train, test, year_month):
     train = train.copy()
     test = test.copy()
 
@@ -138,7 +135,7 @@ def all_mean_category(df,year_month):
         test_window_ym.append((d - dateutil.relativedelta.relativedelta(months = month_back)).strftime('%Y-%m'))
 
     # aggregation 함수 선언
-    agg_func = ['max','min','sum','mean','count','std','skew']
+    agg_func = ['mean','max','min','sum','count','std','skew']
 
     # group by aggregation with Dictionary
     agg_dict = {
@@ -146,6 +143,10 @@ def all_mean_category(df,year_month):
         'price': agg_func,
         'total': agg_func,
     }
+    train['year_month'] = train['order_date'].dt.strftime('%Y-%m')
+    train.reset_index(drop=True, inplace=True)
+    test['year_month'] = test['order_date'].dt.strftime('%Y-%m')
+    test.reset_index(drop=True, inplace=True)
 
     # general statistics for train data with time series trend
     for i, tr_ym in enumerate(train_window_ym):
@@ -159,7 +160,7 @@ def all_mean_category(df,year_month):
 
         train_agg.columns = new_cols
         train_agg.reset_index(inplace = True)
-        
+
         if i == 0:
             train_data = train_agg
         else:
@@ -170,7 +171,6 @@ def all_mean_category(df,year_month):
     for i, tr_ym in enumerate(test_window_ym):
         # group by aggretation 함수로 test 데이터 피처 생성
         test_agg = test.loc[test['year_month'] >= tr_ym].groupby(['customer_id']).agg(agg_dict)
-
         # 멀티 레벨 컬럼을 사용하기 쉽게 1 레벨 컬럼명으로 변경
         new_cols = []
         for level1, level2 in test_agg.columns:
@@ -184,4 +184,83 @@ def all_mean_category(df,year_month):
         else:
             test_data = test_data.merge(test_agg, on=['customer_id'], how='right')
 
+    return train_data, test_data
+
+def add_seasonality(train, test, year_month):
+    train = train.copy()
+    test = test.copy()
+
+    # year_month 이전 월 계산
+    d = datetime.datetime.strptime(year_month, "%Y-%m")
+    prev_ym_d = d - dateutil.relativedelta.relativedelta(months=1)
+
+    train_window_ym = []
+    test_window_ym = []    
+    for month_back in [1, 6, 12, 18]: # 각 주기성을 파악하고 싶은 구간을 생성
+        train_window_ym.append(
+            (
+                (prev_ym_d - dateutil.relativedelta.relativedelta(months=month_back)).strftime('%Y-%m'),
+                (prev_ym_d - dateutil.relativedelta.relativedelta(months=month_back+2)).strftime('%Y-%m') # 1~3, 6~8, 12~14, 18~20 Pair를 만들어준다
+            )
+        )
+        test_window_ym.append(
+            (
+                (d - dateutil.relativedelta.relativedelta(months=month_back)).strftime('%Y-%m'),
+                (d - dateutil.relativedelta.relativedelta(months=month_back+2)).strftime('%Y-%m')
+            )
+        )
+    
+    # aggregation 함수 선언
+    agg_func = ['mean','count','sum','skew']
+
+    # group by aggregation with Dictionary
+    agg_dict = {
+        'quantity': agg_func,
+        'price': agg_func,
+        'total': agg_func,
+    }
+
+    train['year_month'] = train['order_date'].dt.strftime('%Y-%m')
+    train.reset_index(drop=True, inplace=True)
+    test['year_month'] = test['order_date'].dt.strftime('%Y-%m')
+    test.reset_index(drop=True, inplace=True)
+
+    # seasonality for train data with time series
+    for i, (tr_ym, tr_ym_3) in enumerate(train_window_ym):
+        # group by aggretation 함수로 train 데이터 피처 생성
+        # 구간 사이에 존재하는 월들에 대해서 aggregation을 진행
+        train_agg = train.loc[(train['year_month'] >= tr_ym_3) & (train['year_month'] <= tr_ym)].groupby(['customer_id']).agg(agg_dict)
+
+        # 멀티 레벨 컬럼을 사용하기 쉽게 1 레벨 컬럼명으로 변경
+        new_cols = []
+        for level1, level2 in train_agg.columns:
+            new_cols.append(f'{level1}-{level2}-season{i}')
+
+        train_agg.columns = new_cols
+        train_agg.reset_index(inplace = True)
+        
+        if i == 0:
+            train_data = train_agg
+        else:
+            train_data = train_data.merge(train_agg, on=['customer_id'], how='right')
+
+
+    # seasonality for test data with time series
+    for i, (tr_ym, tr_ym_3) in enumerate(test_window_ym):
+        # group by aggretation 함수로 train 데이터 피처 생성
+        test_agg = test.loc[(test['year_month'] >= tr_ym_3) & (test['year_month'] <= tr_ym)].groupby(['customer_id']).agg(agg_dict)
+
+        # 멀티 레벨 컬럼을 사용하기 쉽게 1 레벨 컬럼명으로 변경
+        new_cols = []
+        for level1, level2 in test_agg.columns:
+            new_cols.append(f'{level1}-{level2}-season{i}')
+
+        test_agg.columns = new_cols
+        test_agg.reset_index(inplace = True)
+        
+        if i == 0:
+            test_data = test_agg
+        else:
+            test_data = test_data.merge(test_agg, on=['customer_id'], how='right')
+    
     return train_data, test_data

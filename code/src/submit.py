@@ -23,6 +23,8 @@ def submit(user_key='',file_path=''):
     requests.post(url=submit_url, data=body, files={'file': open(file_path, 'rb')}) 
 
 output_dir= '/opt/ml/code/output'
-user_key='Bearer 5cc45800a3739a5e62f5975948d1142853d88723'
+# user_key='{config 파일에 담아둠}'
 submit(user_key, os.path.join(output_dir, 'output.csv'))
 print("Done submit!")
+
+

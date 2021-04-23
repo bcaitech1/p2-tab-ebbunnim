@@ -56,7 +56,6 @@ if __name__ == '__main__':
     # 인자 파서 선언
     parser = argparse.ArgumentParser()
     
-    # baseline 모델 이름 인자로 받아서 model 변수에 저장
     parser.add_argument('--seed', type=int, default=0, help="base seed is 42")
     parser.add_argument('--ym', type=str, default='2011-12', help="add target year_month to predict, base is 2011-12")
     parser.add_argument('--engineering', type=str, default='feature_engineering_time_series_diff', help="base type is feature engineering type")
@@ -68,7 +67,6 @@ if __name__ == '__main__':
     model_dir = '/opt/ml/code/model' 
     output_dir = '/opt/ml/code/output' 
 
-    # 데이터 파일 읽기
     data = pd.read_csv(data_dir + '/train.csv', parse_dates=['order_date'])
 
     # 예측할 연월 & 시드 설정

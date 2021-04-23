@@ -31,9 +31,9 @@ SEED = 42 # 랜덤 시드
 seed_everything_for_torch(SEED) # 시드 고정
 
 
-data_dir = './code/input' # os.environ['SM_CHANNEL_TRAIN']
-model_dir = './code/model' # os.environ['SM_MODEL_DIR']
-output_dir = './code/output' # os.environ['SM_OUTPUT_DATA_DIR']
+data_dir = './code/input' 
+model_dir = './code/model' 
+output_dir = './code/output'
 
 ######tabnet training######
 def make_tabnet_oof_prediction(train, y, test, features, categorical_features='auto', folds=10):
@@ -48,15 +48,14 @@ def make_tabnet_oof_prediction(train, y, test, features, categorical_features='a
     x_train = train[features]
     x_test = test[features]
 
-    # # 모델 호출
-    # unsupervised_model.fit(
-    #     X_train=x_train.values, # values는 np.array랑 똑같은 역할
-    #     eval_set=[x_test.values],
-    #     max_epochs=1000 , patience=50,
-    #     batch_size=2048, virtual_batch_size=128,
-    #     drop_last=False,
-    #     pretraining_ratio=0.8,
-    # )
+    unsupervised_model.fit(
+        X_train=x_train.values, # values는 np.array랑 똑같은 역할
+        eval_set=[x_test.values],
+        max_epochs=1000 , patience=50,
+        batch_size=2048, virtual_batch_size=128,
+        drop_last=False,
+        pretraining_ratio=0.8,
+    )
 
     clf = TabNetClassifier(
         n_d=64, n_a=64, n_steps=5,
@@ -91,25 +90,12 @@ def make_tabnet_oof_prediction(train, y, test, features, categorical_features='a
         x_tr, x_val = np.array(x_train.loc[tr_idx, features]), np.array(x_train.loc[val_idx, features])
         y_tr, y_val = np.array(y[tr_idx]),np.array(y[val_idx])
 
-
-        # clf.fit(
-        #     X_train=x_tr, y_train=y_tr,
-        #     eval_set=[(x_tr, y_tr), (x_val, y_val)],
-        #     eval_name=['train', 'valid'],
-        #     batch_size=1024, virtual_batch_size=128,
-        #     eval_metric=['auc'],
-        #     max_epochs=1000 , patience=50,
-        #     from_unsupervised=unsupervised_model,
-        #     num_workers=4
-        # )
-
         clf.fit(
         x_tr, y_tr,
         eval_set=[(x_val, y_val)],
         max_epochs=1000 , patience=20,
         batch_size=1024, virtual_batch_size=128,
         )
-
 
         print(f'fold: {fold+1}, x_tr.shape: {x_tr.shape}, x_val.shape: {x_val.shape}')
 
@@ -140,8 +126,8 @@ def make_tabnet_oof_prediction(train, y, test, features, categorical_features='a
         
     ####################MLFLOW###########################
     mlflow.log_param("folds", folds)
-    # for k,v in model_params.items():
-    #     mlflow.log_param(k, v)
+    for k,v in model_params.items():
+        mlflow.log_param(k, v)
 
     mlflow.log_metric("Mean AUC", score)
     mlflow.log_metric("OOF AUC", roc_auc_score(y, y_oof))
@@ -181,9 +167,4 @@ if __name__ == '__main__':
     
     os.makedirs(output_dir, exist_ok=True)
     # 제출 파일 쓰기
-    sub.to_csv(os.path.join(output_dir , 'output.csv'), index=False) # /output.csv 라고 / 하면 안됨
-
-    # 자동 제출
-    # output_dir= '/opt/ml/code/output'
-    # user_key='Bearer 5cc45800a3739a5e62f5975948d1142853d88723'
-    # submit(user_key, os.path.join(output_dir, 'output.csv'))
+    sub.to_csv(os.path.join(output_dir , 'output.csv'), index=False) 

@@ -23,12 +23,6 @@ unsupervised_model = TabNetPretrainer(
     device_name='cuda'
 )
 
-# unsupervised_model.fit(
-#     X_train=X_train,
-#     eval_set=[X_valid],
-#     pretraining_ratio=0.8,
-# )
-
 clf = TabNetClassifier(
     optimizer_fn=torch.optim.Adam,
     optimizer_params=dict(lr=1e-3),
@@ -39,12 +33,4 @@ clf = TabNetClassifier(
     device_name='cuda'
 
 )
-
-# clf.fit(
-#     X_train=X_train, y_train=y_train,
-#     eval_set=[(X_train, y_train), (X_valid, y_valid)],
-#     eval_name=['train', 'valid'],
-#     eval_metric=['auc'],
-#     from_unsupervised=unsupervised_model
-# )
 

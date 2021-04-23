@@ -20,12 +20,15 @@ import lightgbm as lgb
 import xgboost as xgb
 from catboost import CatBoostClassifier, Pool
 
+# Weight Ensemble
+from sklearn.metrics import log_loss
+from scipy.optimize import minimize
+
 # Custom library
 from utils import seed_everything
 from feature_engineering import feature_engineering_base,feature_engineering_cumsum,feature_engineering_nunique,feature_engineering_m_ym,feature_engineering_time_series_diff, generate_label
 
 TOTAL_THRES = 300 # 구매액 임계값
-seed=0 ###### 이거 고쳐야 함.... hyper~ 이쪽에서 호출할 때 안먹힘.. main 안에 있어서 
 def make_lgb_oof_prediction(train, y, test, features, categorical_features='auto', model_params=None, folds=10):
     # 시드 고정
     seed_everything(seed)
@@ -113,7 +116,7 @@ def make_cat_oof_prediction(train, y, test, features, categorical_features=None,
     fi['feature'] = features
     
     # Stratified K Fold 선언
-    skf = StratifiedKFold(n_splits=folds, shuffle=True, random_state=args.seed)
+    skf = StratifiedKFold(n_splits=folds, shuffle=True, random_state=seed)
 
     for fold, (tr_idx, val_idx) in enumerate(skf.split(x_train, y)):
         # train index, validation index로 train 데이터를 나눔
@@ -161,6 +164,80 @@ def make_cat_oof_prediction(train, y, test, features, categorical_features=None,
     
     return y_oof, test_preds, fi
 
+def make_xgb_oof_prediction(train, y, test, features, model_params=None, folds=10):
+    x_train = train[features]
+    x_test = test[features]
+    
+    # 테스트 데이터 예측값을 저장할 변수
+    test_preds = np.zeros(x_test.shape[0])
+    
+    # Out Of Fold Validation 예측 데이터를 저장할 변수
+    y_oof = np.zeros(x_train.shape[0])
+    
+    # 폴드별 평균 Validation 스코어를 저장할 변수
+    score = 0
+    
+    # 피처 중요도를 저장할 데이터 프레임 선언
+    fi = pd.DataFrame()
+    fi['feature'] = features
+    
+    # Stratified K Fold 선언
+    skf = StratifiedKFold(n_splits=folds, shuffle=True, random_state=seed)
+
+    for fold, (tr_idx, val_idx) in enumerate(skf.split(x_train, y)):
+        # train index, validation index로 train 데이터를 나눔
+        x_tr, x_val = x_train.loc[tr_idx, features], x_train.loc[val_idx, features]
+        y_tr, y_val = y[tr_idx], y[val_idx]
+        
+        print(f'fold: {fold+1}, x_tr.shape: {x_tr.shape}, x_val.shape: {x_val.shape}')
+        
+        # XGBoost 데이터셋 선언
+        dtrain = xgb.DMatrix(x_tr, label=y_tr)
+        dvalid = xgb.DMatrix(x_val, label=y_val)
+        
+        # XGBoost 모델 훈련
+        clf = xgb.train(
+            model_params,
+            dtrain,
+            num_boost_round=10000, # 트리 개수
+            evals=[(dtrain, 'train'), (dvalid, 'valid')],  # Validation 성능을 측정할 수 있도록 설정
+            verbose_eval=200,
+            early_stopping_rounds=100
+        )
+        
+        # Validation 데이터 예측
+        val_preds = clf.predict(dvalid)
+        
+        # Validation index에 예측값 저장 
+        y_oof[val_idx] = val_preds
+        
+        # 폴드별 Validation 스코어 출력
+        print(f"Fold {fold + 1} | AUC: {roc_auc_score(y_val, val_preds)}")
+        print('-'*80)
+
+        # score 변수에 폴드별 평균 Validation 스코어 저장
+        score += roc_auc_score(y_val, val_preds) / folds
+        
+        # 테스트 데이터 예측하고 평균해서 저장
+        test_preds += clf.predict(xgb.DMatrix(x_test)) / folds
+
+        # 폴드별 피처 중요도 저장
+        fi_tmp = pd.DataFrame.from_records([clf.get_score()]).T.reset_index()
+        fi_tmp.columns = ['feature',f'fold_{fold+1}']
+        fi = pd.merge(fi, fi_tmp, on='feature')
+
+        del x_tr, x_val, y_tr, y_val
+        gc.collect()
+        
+    print(f"\nMean AUC = {score}") # 폴드별 평균 Validation 스코어 출력
+    print(f"OOF AUC = {roc_auc_score(y, y_oof)}") # Out Of Fold Validation 스코어 출력
+        
+    # 폴드별 피처 중요도 평균값 계산해서 저장
+    fi_cols = [col for col in fi.columns if 'fold_' in col]
+    fi['importance'] = fi[fi_cols].mean(axis=1)
+    
+    return y_oof, test_preds, fi
+
 if __name__ == '__main__':
     # 인자 파서 선언
     parser = argparse.ArgumentParser()
@@ -170,6 +247,7 @@ if __name__ == '__main__':
     parser.add_argument('--ym', type=str, default='2011-12', help="add target year_month to predict, base is 2011-12")
     parser.add_argument('--engineering', type=str, default='feature_engineering_all', help="base type is feature engineering type")
     parser.add_argument('--tuning', type=bool, default=True, help="choose true if you want hyper params tuning with optuna, else choose false")
+    parser.add_argument('--ensemble', type=bool, default=True, help="choose true if you want to ensemble model, else choose false")
 
     args = parser.parse_args()
 
@@ -211,15 +289,27 @@ if __name__ == '__main__':
         'rsm': 0.8, # 피처 샘플링 비율
     }
 
+    xgb_params = {
+        'objective': 'binary:logistic', # 이진 분류
+        'learning_rate': 0.1, # 학습률
+        'max_depth': 6, # 트리 최고 깊이
+        'colsample_bytree': 0.8, # 피처 샘플링 비율
+        'subsample': 0.8, # 데이터 샘플링 비율
+        'eval_metric': 'auc', # 평가 지표 설정
+        'seed': args.seed,
+    } 
+
+
     # 피처 엔지니어링 실행
     train, test, y, features = getattr(import_module("feature_engineering"), args.engineering)(data, year_month)
     
-    # if args.tuning: # optuna로 찾은 최적 파라미터로 model params 덮어쓰기
-        # model_params={'num_leaves': 3, 'max_bin': 226, 'min_data_in_leaf': 20, 'feature_fraction': 0.8291397111065254, 'bagging_fraction': 0.9984713217416485, 'bagging_freq': 7, 'lambda_l1': 6.386550309963982e-07, 'lambda_l2': 0.022286018925276777}
-    # Cross Validation Out Of Fold로 LightGBM 모델 훈련 및 예측
-    # y_oof, test_preds, fi = make_lgb_oof_prediction(train, y, test, features, model_params=lgb_params)
-    y_oof, test_preds, fi = make_cat_oof_prediction(train, y, test, features, model_params=cat_params)
-
+    if args.ensemble:
+        # oof_xgb, xgb_pred, fi = make_xgb_oof_prediction(train, y, test, features, model_params=xgb_params)
+        oof_lgb, lgb_pred, fi = make_lgb_oof_prediction(train, y, test, features, model_params=lgb_params)
+        oof_cat, cat_pred, fi = make_cat_oof_prediction(train, y, test, features, model_params=cat_params)
+        test_preds = lgb_pred*0.4 + cat_pred*0.6
+    else:
+        y_oof, test_preds, fi = make_cat_oof_prediction(train, y, test, features, model_params=cat_params)
 
     # 테스트 결과 제출 파일 읽기
     sub = pd.read_csv(data_dir + '/sample_submission.csv')
@@ -236,14 +326,3 @@ if __name__ == '__main__':
     # submit.py실행하기 
 
 
-# basic
-# Mean AUC = 0.8193979712816145
-# OOF AUC = 0.8078254423369112
-
-# best LB
-# Mean AUC = 0.8207861264785213
-# OOF AUC = 0.8176176186211475
-
-# try 해볼것
-# Mean AUC = 0.8228843704695846
-# OOF AUC = 0.8218917226967515

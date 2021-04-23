@@ -26,8 +26,8 @@ import lightgbm as lgb
 from tqdm.notebook import trange, tqdm
 
 # Feature generation
-from feature_generation import feature_generation_cumsum, feature_generation_m_ym, feature_generation_time_series_diff,feature_generation_all
-
+from feature_generation import feature_generation_cumsum, feature_generation_m_ym, feature_generation_time_series_diff,feature_generation_all, add_trend, add_seasonality
+# from feature_selection import feature_selector
 pd.options.display.max_rows = 10000
 pd.options.display.max_columns = 1000
 pd.options.display.max_colwidth = 1000
@@ -383,6 +383,7 @@ def feature_engineering_all(data, year_month):
     train = df[df['order_date'] < prev_ym]
     test = df[df['order_date'] < year_month]
 
+
     # train, test 레이블 데이터 생성
     train_label = generate_label(df, prev_ym)[['customer_id','year_month','label']]
     test_label = generate_label(df, year_month)[['customer_id','year_month','label']]
@@ -390,7 +391,6 @@ def feature_engineering_all(data, year_month):
     print('#########complete labeling###########')
 
     # group by aggregation 함수 선언
-    # agg_func = ['mean','max','min','sum','count','std','skew']
     agg_func = ['mean','sum','count','skew']
 
     agg_dict = {
@@ -431,19 +431,40 @@ def feature_engineering_all(data, year_month):
         
         all_train_data = all_train_data.append(train_agg)
     
-    all_train_data = train_label.merge(all_train_data, on=['customer_id', 'year_month'], how='left')
-    features = all_train_data.drop(columns=['customer_id', 'label', 'year_month']).columns
-    print('features: ',features)
-    # group by aggretation 함수로 test 데이터 피처 생성
     test=feature_generation_all(test,year_month)
     test_agg = test.groupby(['customer_id']).agg(agg_dict)
     test_agg.columns = new_cols
+
+    ############## tracking trend ##################
+    t1,t2=add_trend(train, test, year_month)
+    t3,t4=add_seasonality(train, test, year_month)
+
+    # add trend (merge feature)
+    all_train_data=all_train_data.merge(t1,on=['customer_id'], how='left')
+    all_train_data=all_train_data.merge(t3,on=['customer_id'], how='left')
+    print('=====complete trend merge(train)======')
+    all_train_data = train_label.merge(all_train_data, on=['customer_id', 'year_month'], how='left')
     
+    features = all_train_data.drop(columns=['customer_id', 'label', 'year_month']).columns
+    print('features: ',features)
+
+    #### feature selection ####
+    # X=all_train_data.drop(columns=['customer_id', 'label', 'year_month'])
+    # Y=train_label.drop(columns=['customer_id','year_month'])
+    # print('123213123123123123123')
+    # print(train_label)
+    # features = feature_selector.fit(X,Y)
+    # filtered_features= features.columns[list(features.k_feature_idx_)]
+    # print('filtered features: ',filtered_features)
+    ################################################
+
+    # group by aggretation 함수로 test 데이터 피처 생성
+    # add trend (merge feature)
+    test_agg=test_agg.merge(t2,on=['customer_id'],how='left')
+    test_agg=test_agg.merge(t4,on=['customer_id'],how='left')
+    print('=====complete trend merge(test)======')
     test_data = test_label.merge(test_agg, on=['customer_id'], how='left')
-    
     # train, test 데이터 전처리
     x_tr, x_te = feature_preprocessing(all_train_data, test_data, features)
-    
     print('x_tr.shape', x_tr.shape, ', x_te.shape', x_te.shape)
     return x_tr, x_te, all_train_data['label'], features
-
