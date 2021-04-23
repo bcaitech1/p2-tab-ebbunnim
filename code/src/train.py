@@ -1,30 +1,32 @@
 # Suppress warnings 
 import warnings
+
 warnings.filterwarnings('ignore')
 
-import pandas as pd
-import numpy as np
-import os, sys, gc, random
-import datetime
-import dateutil.relativedelta
 import argparse
-import torch
+import datetime
+import gc
+import os
+import random
+import sys
 
-# Machine learning
-from sklearn.preprocessing import LabelEncoder
-from sklearn.impute import SimpleImputer
-from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics import roc_auc_score
-
+import dateutil.relativedelta
 import lightgbm as lgb
-
-# Custom library
-from utils import seed_everything_for_torch, print_score
-from features import generate_label, feature_engineering1
-from model import unsupervised_model, clf
+import numpy as np
+import pandas as pd
+import torch
+from features import feature_engineering1, generate_label
 from pytorch_tabnet.pretraining import TabNetPretrainer
 from pytorch_tabnet.tab_model import TabNetClassifier
+from sklearn.impute import SimpleImputer
+from sklearn.metrics import roc_auc_score
+from sklearn.model_selection import StratifiedKFold
+# Machine learning
+from sklearn.preprocessing import LabelEncoder
 
+from model import clf, unsupervised_model
+# Custom library
+from utils import print_score, seed_everything_for_torch
 
 TOTAL_THRES = 300 # 구매액 임계값
 SEED = 42 # 랜덤 시드

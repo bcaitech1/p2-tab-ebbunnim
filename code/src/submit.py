@@ -1,6 +1,8 @@
 import json
-import requests
 import os
+
+import requests
+
 
 def submit(user_key='',file_path=''):
     if not user_key:

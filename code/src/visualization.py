@@ -1,12 +1,13 @@
 # Data manipulation
-import pandas as pd 
-import numpy as np
-
 # Visualization
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import seaborn as sns
 from IPython.display import display
+
 from feature_engineering import generate_label
+
 
 def plot_feature_importances(df, n=20, color='blue', figsize=(12,8)):
     # 피처 중요도 순으로 내림차순 정렬

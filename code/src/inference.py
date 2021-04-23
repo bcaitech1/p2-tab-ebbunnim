@@ -1,32 +1,38 @@
 # Suppress warnings 
 import warnings
+
 warnings.filterwarnings('ignore')
 
-import pandas as pd
-import numpy as np
-import os, sys, gc, random
-import datetime
-import dateutil.relativedelta
 import argparse
+import datetime
+import gc
+import os
+import random
+import sys
 from importlib import import_module
 
-# Machine learning
-from sklearn.preprocessing import LabelEncoder
-from sklearn.impute import SimpleImputer
-from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics import roc_auc_score
-
+import dateutil.relativedelta
 import lightgbm as lgb
+import numpy as np
+import pandas as pd
 import xgboost as xgb
 from catboost import CatBoostClassifier, Pool
-
-# Weight Ensemble
-from sklearn.metrics import log_loss
 from scipy.optimize import minimize
+from sklearn.impute import SimpleImputer
+# Weight Ensemble
+from sklearn.metrics import log_loss, roc_auc_score
+from sklearn.model_selection import StratifiedKFold
+# Machine learning
+from sklearn.preprocessing import LabelEncoder
 
+from feature_engineering import (feature_engineering_base,
+                                 feature_engineering_cumsum,
+                                 feature_engineering_m_ym,
+                                 feature_engineering_nunique,
+                                 feature_engineering_time_series_diff,
+                                 generate_label)
 # Custom library
 from utils import seed_everything
-from feature_engineering import feature_engineering_base,feature_engineering_cumsum,feature_engineering_nunique,feature_engineering_m_ym,feature_engineering_time_series_diff, generate_label
 
 TOTAL_THRES = 300 # 구매액 임계값
 def make_lgb_oof_prediction(train, y, test, features, categorical_features='auto', model_params=None, folds=10):

@@ -1,15 +1,14 @@
-from pytorch_tabnet.tab_model import TabNetClassifier
-from pytorch_tabnet.pretraining import TabNetPretrainer
-import torch
-from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import roc_auc_score
-
-import pandas as pd
-import numpy as np
-
 import os
 from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import torch
 from matplotlib import pyplot as plt
+from pytorch_tabnet.pretraining import TabNetPretrainer
+from pytorch_tabnet.tab_model import TabNetClassifier
+from sklearn.metrics import roc_auc_score
+from sklearn.preprocessing import LabelEncoder
 
 # -- settings
 use_cuda = torch.cuda.is_available()

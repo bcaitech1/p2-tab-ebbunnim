@@ -1,33 +1,39 @@
 # Suppress warnings 
 import warnings
+
 warnings.filterwarnings('ignore')
 
-import os, sys, gc, warnings, random
 import datetime
+import gc
+import os
+import random
+import sys
+import warnings
+
 import dateutil.relativedelta
-
-# Data manipulation
-import pandas as pd 
-import numpy as np
-
-# Visualization
+import lightgbm as lgb
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import seaborn as sns
 from IPython.display import display
-
-# Machine learning
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import MinMaxScaler, LabelEncoder
-from sklearn.impute import SimpleImputer
-from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score, precision_recall_curve, roc_curve
-from sklearn.model_selection import train_test_split, cross_val_score, KFold, StratifiedKFold, GroupKFold
 from sklearn.ensemble import RandomForestClassifier
-import lightgbm as lgb
-from tqdm.notebook import trange, tqdm
+from sklearn.impute import SimpleImputer
+from sklearn.metrics import (f1_score, precision_recall_curve, precision_score,
+                             recall_score, roc_auc_score, roc_curve)
+from sklearn.model_selection import (GroupKFold, KFold, StratifiedKFold,
+                                     cross_val_score, train_test_split)
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import LabelEncoder, MinMaxScaler
+from tqdm.notebook import tqdm, trange
 
 # Feature generation
-from feature_generation import feature_generation_cumsum, feature_generation_m_ym, feature_generation_time_series_diff,feature_generation_all, add_trend, add_seasonality
-# from feature_selection import feature_selector
+from feature_generation import (add_seasonality, add_trend,
+                                feature_generation_all,
+                                feature_generation_cumsum,
+                                feature_generation_m_ym,
+                                feature_generation_time_series_diff)
+
 pd.options.display.max_rows = 10000
 pd.options.display.max_columns = 1000
 pd.options.display.max_colwidth = 1000

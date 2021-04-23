@@ -1,30 +1,35 @@
 # Suppress warnings 
 import warnings
+
 warnings.filterwarnings('ignore')
 
-import os, sys, gc, warnings, random
 import datetime
-from dateutil.relativedelta import relativedelta
+import gc
+import os
+import random
+import sys
+import warnings
+
 import dateutil.relativedelta
-
-# Data manipulation
-import pandas as pd 
-import numpy as np
-
+import lightgbm as lgb
 # Visualization
 import matplotlib.pyplot as plt
+import numpy as np
+# Data manipulation
+import pandas as pd
 import seaborn as sns
+from dateutil.relativedelta import relativedelta
 from IPython.display import display
-
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.impute import SimpleImputer
+from sklearn.metrics import (f1_score, precision_recall_curve, precision_score,
+                             recall_score, roc_auc_score, roc_curve)
+from sklearn.model_selection import (GroupKFold, KFold, StratifiedKFold,
+                                     cross_val_score, train_test_split)
 # Machine learning
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import MinMaxScaler, LabelEncoder
-from sklearn.impute import SimpleImputer
-from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score, precision_recall_curve, roc_curve
-from sklearn.model_selection import train_test_split, cross_val_score, KFold, StratifiedKFold, GroupKFold
-from sklearn.ensemble import RandomForestClassifier
-import lightgbm as lgb
-from tqdm.notebook import trange, tqdm
+from sklearn.preprocessing import LabelEncoder, MinMaxScaler
+from tqdm.notebook import tqdm, trange
 
 # Custom
 from utils import get_high_correlation_cols

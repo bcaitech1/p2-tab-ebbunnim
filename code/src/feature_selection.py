@@ -1,5 +1,5 @@
 from mlxtend.feature_selection import ExhaustiveFeatureSelector
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.metrics import roc_auc_score
 
 feature_selector = ExhaustiveFeatureSelector(

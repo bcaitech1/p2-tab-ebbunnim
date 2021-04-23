@@ -1,6 +1,7 @@
 import pandas as pd
 from sklearn.metrics import roc_auc_score
 
+
 # 평가 함수
 def evaluation(gt_path, pred_path):
     # Ground Truth 경로에서 정답 파일 읽기
