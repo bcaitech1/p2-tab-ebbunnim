@@ -53,13 +53,14 @@ if args.ensemble:
 ```
 
 
-# Watch out
+# Contraints
 - `Input directory doesn't exist!`
     - `train.csv` and `sample_submission.csv` was not uploaded. But the column info was opened below.
 - Columns of train data 
-![](https://s3-ap-northeast-2.amazonaws.com/aistages-public-junyeop/app/Users/00000074/files/e2182de2-1378-46b2-a54e-0cfbfcb3ad7a..png)
+![데이터정보](https://user-images.githubusercontent.com/46434838/115820033-03e07700-a43b-11eb-8b91-e30d446987a9.png)
 
 
-# How to develop this code
+# Improvements
+- ~~Things to improve.~~
 - Add Feature selection ([sample](./code/src/feature_selection.py))
 - Using Tabnet architecture. ([sample1](./code/src/model.py), [sample2](./code/src/train.py))
